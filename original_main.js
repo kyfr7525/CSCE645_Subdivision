@@ -26,9 +26,9 @@ scene.add( torus );
 const light = new THREE.PointLight( 0xff0000, 1, 100 );
 light.position.set(2.5, 7.5, 15);
 scene.add( light );
+var heliMat = new THREE.MeshNormalMaterial();
 
 const loader = new OBJLoader();
-var heliMat = new THREE.MeshNormalMaterial();
 loader.load(
     './resources/helicopter_body2.obj',
     function(object) {

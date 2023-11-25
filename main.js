@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { TeapotGeometry } from 'three/addons/geometries/TeapotGeometry.js';
 import LoopSubdivision from './LoopSubdivision.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 let renderer, scene, camera;
 let standardMat;
@@ -65,7 +65,7 @@ function init() {
 
     window.addEventListener('resize', onWindowResize);
 
-    const geomTypes = ['Box', 'Capsule', 'Circle', 'Cone', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Lathe', 'Octahedron', 'Plane', 'Ring', 'Shape', 'Sphere', 'Teapot', 'Tetrahedron', 'Torus', 'TorusKnot'];
+    const geomTypes = ['Box', 'Capsule', 'Circle', 'Cone', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Octahedron', 'Plane', 'Ring', 'Sphere', 'Tetrahedron', 'Torus', 'TorusKnot'];//, 'Upload'];
 
     const gui = new GUI();
 
@@ -95,114 +95,49 @@ function getGeometry() {
     switch ( params.geometry.toLowerCase() ) {
 
         case 'box':
-
             return new THREE.BoxGeometry();
 
         case 'capsule':
-
             return new THREE.CapsuleGeometry( 0.5, 0.5, 3, 5 );
 
         case 'circle':
-
             return new THREE.CircleGeometry( 0.6, 10 );
 
         case 'cone':
-
             return new THREE.ConeGeometry( 0.6, 1.5, 5, 3 );
 
         case 'cylinder':
-
             return new THREE.CylinderGeometry( 0.5, 0.5, 1, 5, 4 );
 
         case 'dodecahedron':
-
             return new THREE.DodecahedronGeometry( 0.6 );
 
         case 'icosahedron':
-
             return new THREE.IcosahedronGeometry( 0.6 );
 
-        case 'lathe':
-
-            // Sine Wave
-
-            const points = [];
-
-            for ( let i = 0; i < 65; i += 5 ) {
-
-                const x = ( Math.sin( i * 0.2 ) * Math.sin( i * 0.1 ) * 15 + 50 ) * 1.2;
-                const y = ( i - 5 ) * 3;
-                points.push( new THREE.Vector2( x * 0.0075, y * 0.005 ) );
-
-            }
-
-            const latheGeometry = new THREE.LatheGeometry( points, 4 );
-            latheGeometry.center();
-
-            return latheGeometry;
-
         case 'octahedron':
-
             return new THREE.OctahedronGeometry( 0.7 );
 
         case 'plane':
-
             return new THREE.PlaneGeometry();
 
         case 'ring':
-
             return new THREE.RingGeometry( 0.3, 0.6, 10 );
 
-        case 'shape':
-
-            // Fish
-
-            const fishShape = new THREE.Shape()
-                .quadraticCurveTo( 0.375, - 0.6, 0.675, - 0.075 )
-                .quadraticCurveTo( 0.75, - 0.075, 0.8625, - 0.3 )
-                .quadraticCurveTo( 0.8625, 0, 0.8625, 0.3 )
-                .quadraticCurveTo( 0.75, 0.075, 0.675, 0.075 )
-                .quadraticCurveTo( 0.375, 0.6, 0, 0 );
-
-            const options = {
-                curveSegments: 8,
-                steps: 1,
-                depth: 0.25,
-                bevelEnabled: false,
-                bevelSegments: 2
-            };
-
-            const circleShape = new THREE.Shape();
-            circleShape.absarc(0, 0, 0.5 /* radius */, 0, Math.PI * 2);
-
-            const shapeGeometry = new THREE.ExtrudeGeometry( circleShape, options );
-            shapeGeometry.center();
-
-            return shapeGeometry;
-
         case 'sphere':
-
             return new THREE.SphereGeometry( 0.6, 8, 4 );
 
-        case 'teapot':
-
-            const teapotGeometry = new TeapotGeometry( 0.4, 3 );
-            teapotGeometry.rotateY( - 0.5 );
-
-            return teapotGeometry;
-
         case 'tetrahedron':
-
             return new THREE.TetrahedronGeometry( 0.8 );
 
         case 'torus':
-
             return new THREE.TorusGeometry( 0.48, 0.24, 4, 6 );
 
         case 'torusknot':
-
             return new THREE.TorusKnotGeometry( 0.38, 0.18, 20, 4 );
 
+        // case 'Upload':
+        //     // when user wants to upload their own obj file
     }
 
 }
