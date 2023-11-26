@@ -9,6 +9,7 @@ let standardMat;
 let meshNormal, meshSmooth;
 let wireNormal, wireSmooth;
 let wireMaterial;
+let coloredPoints;
 
 
 
@@ -98,7 +99,7 @@ function init() {
 
     window.addEventListener('resize', onWindowResize);
 
-    const geomTypes = ['Box', 'Capsule', 'Circle', 'Cone', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Octahedron', 'Plane', 'Ring', 'Sphere', 'Tetrahedron', 'Torus', 'TorusKnot'];//, 'Upload'];
+    const geomTypes = ['Box', 'Capsule', 'Circle', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Octahedron', 'Plane', 'Ring', 'Sphere', 'Tetrahedron', 'Torus'];//, 'Upload'];
 
     const gui = new GUI();
 
@@ -136,9 +137,6 @@ function getGeometry() {
         case 'circle':
             return new THREE.CircleGeometry( 0.6, 10 );
 
-        case 'cone':
-            return new THREE.ConeGeometry( 0.6, 1.5, 5, 3 );
-
         case 'cylinder':
             return new THREE.CylinderGeometry( 0.5, 0.5, 1, 5, 4 );
 
@@ -166,15 +164,39 @@ function getGeometry() {
         case 'torus':
             return new THREE.TorusGeometry( 0.48, 0.24, 4, 6 );
 
-        case 'torusknot':
-            return new THREE.TorusKnotGeometry( 0.38, 0.18, 20, 4 );
-
         // case 'Upload':
         //     // when user wants to upload their own obj file
     }
 
 }
 
+
+
+
+
+function createColoredPoints(geometry, color, offset) {
+    const positions = geometry.attributes.position;
+
+    if (!positions) {
+        console.error('Invalid geometry for colored points.');
+        return null;
+    }
+
+    const pointsGeometry = new THREE.BufferGeometry();
+    pointsGeometry.setAttribute('position', positions);
+
+    const pointsMaterial = new THREE.PointsMaterial({ color: color, size: 0.05 }); // Adjust the size as needed
+    const points = new THREE.Points(pointsGeometry, pointsMaterial);
+
+    // Center the points on the geometry and apply the offset
+    const boundingBox = new THREE.Box3().setFromBufferAttribute(positions);
+    const center = new THREE.Vector3();
+    boundingBox.getCenter(center);
+    const adjustedOffset = offset.clone().add(center); // Adjusted offset based on the bounding box center
+    points.position.copy(adjustedOffset);
+
+    return points;
+}
 
 
 function updateMeshes() {
@@ -191,6 +213,23 @@ function updateMeshes() {
     wireNormal.geometry = normalGeometry.clone();
     wireSmooth.geometry = smoothGeometry.clone();
 
+    // Create colored points for the normal and smooth geometries and add to the scene
+    if (coloredPoints) {
+        scene.remove(coloredPoints);
+    }
+
+    const coloredPointsNormal = createColoredPoints(normalGeometry, color0, new THREE.Vector3(-0.7, 0, 0));
+    const coloredPointsSmooth = createColoredPoints(smoothGeometry, color0, new THREE.Vector3(0.7, 0, 0));
+
+    // Check if coloredPoints are defined before adding them to the scene
+    if (coloredPointsNormal) {
+        scene.add(coloredPointsNormal);
+    }
+
+    if (coloredPointsSmooth) {
+        scene.add(coloredPointsSmooth);
+    }
+
     // Ensure wireframe visibility is updated
     updateWireframe();
 
@@ -200,8 +239,6 @@ function updateMeshes() {
     // Render the scene
     render();
 }
-
-
 
 
 
@@ -223,6 +260,8 @@ function updateMaterial() {
 
     render();
 }
+
+
 
 function updateWireframe() {
     wireNormal.visible = wireSmooth.visible = params.wireframe;

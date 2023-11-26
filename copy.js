@@ -202,10 +202,6 @@ function updateMeshes() {
 }
 
 
-
-
-
-
 function disposeMaterial(material) {
     const materials = Array.isArray(material) ? material : [material];
     for (let i = 0; i < materials.length; i++) {
@@ -223,6 +219,8 @@ function updateMaterial() {
 
     render();
 }
+
+
 
 function updateWireframe() {
     wireNormal.visible = wireSmooth.visible = params.wireframe;

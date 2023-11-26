@@ -41,32 +41,7 @@ import * as THREE from 'three';
 //      - This modifier returns a NonIndexed geometry. An Indexed geometry can be created by using the
 //        BufferGeometryUtils.mergeVertices() function, see:
 //        https://threejs.org/docs/?q=buffer#examples/en/utils/BufferGeometryUtils.mergeVertices
-//
-//      - This modifier works best with geometry whose triangles share edges AND edge vertices. See diagram below.
-//
-//          OKAY          NOT OKAY
-//            O              O
-//           /|\            / \
-//          / | \          /   \
-//         /  |  \        /     \
-//        O---O---O      O---O---O
-//         \  |  /        \  |  /
-//          \ | /          \ | /
-//           \|/            \|/
-//            O              O
-//
-//  Reference(s)
-//      - Subdivision Surfaces
-//          https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/thesis-10.pdf
-//          https://en.wikipedia.org/wiki/Loop_subdivision_surface
-//          https://cseweb.ucsd.edu/~alchern/teaching/cse167_fa21/6-3Surfaces.pdf
-//
-//      - Original three.js SubdivisionModifier, r124 (Loop)
-//          https://github.com/mrdoob/three.js/blob/r124/examples/jsm/modifiers/SubdivisionModifier.js
-//
-//      - Original three.js SubdivisionModifier, r59 (Catmull-Clark)
-//          https://github.com/mrdoob/three.js/blob/r59/examples/js/modifiers/SubdivisionModifier.js
-//
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 
