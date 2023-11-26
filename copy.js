@@ -9,8 +9,8 @@ let standardMat;
 let meshNormal, meshSmooth;
 let wireNormal, wireSmooth;
 let wireMaterial;
-
-
+let coloredPoints;
+let coloredPointsArrays = []; // Array to store colored points for each iteration
 
 // Create a gray color
 var grayColor = new THREE.Color(0.5, 0.5, 0.5); // base color
@@ -88,8 +88,8 @@ function init() {
     wireMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: true, wireframe: true });
     wireNormal = new THREE.Mesh(new THREE.BufferGeometry(), wireMaterial);
     wireSmooth = new THREE.Mesh(new THREE.BufferGeometry(), wireMaterial);
-    wireNormal.visible = false;
-    wireSmooth.visible = false;
+    wireNormal.visible = true;
+    wireSmooth.visible = true;
     wireNormal.position.copy(meshNormal.position);
     wireSmooth.position.copy(meshSmooth.position);
     scene.add(wireNormal, wireSmooth);
@@ -98,7 +98,7 @@ function init() {
 
     window.addEventListener('resize', onWindowResize);
 
-    const geomTypes = ['Box', 'Capsule', 'Circle', 'Cone', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Octahedron', 'Plane', 'Ring', 'Sphere', 'Tetrahedron', 'Torus', 'TorusKnot'];//, 'Upload'];
+    const geomTypes = ['Box', 'Capsule', 'Circle', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Octahedron', 'Plane', 'Ring', 'Sphere', 'Tetrahedron', 'Torus'];//, 'Upload'];
 
     const gui = new GUI();
 
@@ -136,9 +136,6 @@ function getGeometry() {
         case 'circle':
             return new THREE.CircleGeometry( 0.6, 10 );
 
-        case 'cone':
-            return new THREE.ConeGeometry( 0.6, 1.5, 5, 3 );
-
         case 'cylinder':
             return new THREE.CylinderGeometry( 0.5, 0.5, 1, 5, 4 );
 
@@ -166,9 +163,6 @@ function getGeometry() {
         case 'torus':
             return new THREE.TorusGeometry( 0.48, 0.24, 4, 6 );
 
-        case 'torusknot':
-            return new THREE.TorusKnotGeometry( 0.38, 0.18, 20, 4 );
-
         // case 'Upload':
         //     // when user wants to upload their own obj file
     }
@@ -177,22 +171,86 @@ function getGeometry() {
 
 
 
+function createColoredPoints(geometry, color, offset, iteration) {
+    const positions = geometry.attributes.position;
+
+    if (!positions) {
+        console.error('Invalid geometry for colored points.');
+        return null;
+    }
+
+    const pointsGeometry = new THREE.BufferGeometry();
+    pointsGeometry.setAttribute('position', positions);
+
+    const pointsMaterial = new THREE.PointsMaterial({ color: color, size: 0.05 }); // Adjust the size as needed
+    const points = new THREE.Points(pointsGeometry, pointsMaterial);
+
+    // Center the points on the geometry and apply the offset
+    const boundingBox = new THREE.Box3().setFromBufferAttribute(positions);
+    const center = new THREE.Vector3();
+    boundingBox.getCenter(center);
+    const adjustedOffset = offset.clone().add(center); // Adjusted offset based on the bounding box center
+    points.position.copy(adjustedOffset);
+
+    // Store the points in the corresponding iteration array
+    coloredPointsArrays[iteration] = coloredPointsArrays[iteration] || [];
+    coloredPointsArrays[iteration].push(points);
+
+    return points;
+}
+
 function updateMeshes() {
     const normalGeometry = getGeometry();
     const smoothGeometry = LoopSubdivision.modify(normalGeometry, params.iterations, params);
 
+    // Dispose existing geometries
     meshNormal.geometry.dispose();
     meshSmooth.geometry.dispose();
+    wireNormal.geometry.dispose();
+    wireSmooth.geometry.dispose();
+
+    // Create new geometries
     meshNormal.geometry = normalGeometry;
     meshSmooth.geometry = smoothGeometry;
 
-    wireNormal.geometry.dispose();
-    wireSmooth.geometry.dispose();
-    wireNormal.geometry = normalGeometry.clone();
-    wireSmooth.geometry = smoothGeometry.clone();
+    // Create wireframe geometries
+    wireNormal.geometry = new THREE.WireframeGeometry(normalGeometry);
+    wireSmooth.geometry = new THREE.WireframeGeometry(smoothGeometry);
 
-    // Ensure wireframe visibility is updated
-    updateWireframe();
+    // Ensure the wireframe material is applied
+    wireNormal.material.dispose();
+    wireSmooth.material.dispose();
+    wireNormal.material = wireMaterial.clone();
+    wireSmooth.material = wireMaterial.clone();
+
+    // Set the wireframe visibility
+    wireNormal.visible = wireSmooth.visible = params.wireframe;
+
+    // Remove existing colored points from the scene
+    coloredPointsArrays.flat().forEach(points => scene.remove(points));
+
+    // Clear the colored points array
+    coloredPointsArrays = [];
+
+    // Iterate through each iteration and create colored points
+    for (let i = 0; i <= params.iterations; i++) {
+        const color = new THREE.Color().fromArray(colors[i % colors.length]);
+        const coloredPointsNormal = createColoredPoints(normalGeometry, color, new THREE.Vector3(-0.7, 0, 0), i);
+        const coloredPointsSmooth = createColoredPoints(smoothGeometry, color, new THREE.Vector3(0.7, 0, 0), i);
+
+        // Add the colored points to the scene
+        if (coloredPointsNormal) {
+            scene.add(coloredPointsNormal);
+            coloredPointsArrays[i] = coloredPointsArrays[i] || [];
+            coloredPointsArrays[i].push(coloredPointsNormal);
+        }
+
+        if (coloredPointsSmooth) {
+            scene.add(coloredPointsSmooth);
+            coloredPointsArrays[i] = coloredPointsArrays[i] || [];
+            coloredPointsArrays[i].push(coloredPointsSmooth);
+        }
+    }
 
     // Update the material if needed
     updateMaterial();
@@ -200,6 +258,9 @@ function updateMeshes() {
     // Render the scene
     render();
 }
+
+
+
 
 
 function disposeMaterial(material) {

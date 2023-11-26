@@ -10,8 +10,7 @@ let meshNormal, meshSmooth;
 let wireNormal, wireSmooth;
 let wireMaterial;
 let coloredPoints;
-
-
+let coloredPointsArrays = []; // Array to store colored points for each iteration
 
 // Create a gray color
 var grayColor = new THREE.Color(0.5, 0.5, 0.5); // base color
@@ -89,8 +88,8 @@ function init() {
     wireMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: true, wireframe: true });
     wireNormal = new THREE.Mesh(new THREE.BufferGeometry(), wireMaterial);
     wireSmooth = new THREE.Mesh(new THREE.BufferGeometry(), wireMaterial);
-    wireNormal.visible = false;
-    wireSmooth.visible = false;
+    wireNormal.visible = true;
+    wireSmooth.visible = true;
     wireNormal.position.copy(meshNormal.position);
     wireSmooth.position.copy(meshSmooth.position);
     scene.add(wireNormal, wireSmooth);
@@ -172,9 +171,7 @@ function getGeometry() {
 
 
 
-
-
-function createColoredPoints(geometry, color, offset) {
+function createColoredPoints(geometry, color, offset, iteration) {
     const positions = geometry.attributes.position;
 
     if (!positions) {
@@ -195,50 +192,98 @@ function createColoredPoints(geometry, color, offset) {
     const adjustedOffset = offset.clone().add(center); // Adjusted offset based on the bounding box center
     points.position.copy(adjustedOffset);
 
+    // Store the points in the corresponding iteration array
+    coloredPointsArrays[iteration] = coloredPointsArrays[iteration] || [];
+    coloredPointsArrays[iteration].push(points);
+
     return points;
 }
 
 
 function updateMeshes() {
     const normalGeometry = getGeometry();
-    const smoothGeometry = LoopSubdivision.modify(normalGeometry, params.iterations, params);
+    const baseSmoothGeometry = getGeometry(); // Create a base smooth geometry
 
+    // Dispose existing geometries and materials
     meshNormal.geometry.dispose();
     meshSmooth.geometry.dispose();
-    meshNormal.geometry = normalGeometry;
-    meshSmooth.geometry = smoothGeometry;
-
     wireNormal.geometry.dispose();
     wireSmooth.geometry.dispose();
-    wireNormal.geometry = normalGeometry.clone();
-    wireSmooth.geometry = smoothGeometry.clone();
 
-    // Create colored points for the normal and smooth geometries and add to the scene
-    if (coloredPoints) {
-        scene.remove(coloredPoints);
+    disposeMaterial(meshNormal.material);
+    disposeMaterial(meshSmooth.material);
+
+    // Create new geometries
+    meshNormal.geometry = normalGeometry;
+    meshSmooth.geometry = LoopSubdivision.modify(baseSmoothGeometry.clone(), params.iterations, params);
+
+    // Create materials for normal and smooth geometries
+    const normalMaterial = new THREE.MeshBasicMaterial({ color: grayColor });
+    const smoothMaterial = standardMat.clone(); // Use the same material for smooth geometry
+
+    // Apply materials to the geometries
+    meshNormal.material = normalMaterial;
+    meshSmooth.material = smoothMaterial;
+
+    // Remove existing colored points from the scene
+    coloredPointsArrays.flat().forEach(points => scene.remove(points));
+
+    // Clear the colored points array
+    coloredPointsArrays = [];
+
+    // Create colored points for iteration0 of both normalGeometry and smoothGeometry
+    const coloredPointsNormalIteration0 = createColoredPoints(normalGeometry, color0, new THREE.Vector3(-0.7, 0, 0), 0);
+    const coloredPointsSmoothIteration0 = createColoredPoints(baseSmoothGeometry.clone(), color0, new THREE.Vector3(0.7, 0, 0), 0);
+
+    if (coloredPointsNormalIteration0) {
+        scene.add(coloredPointsNormalIteration0);
+        coloredPointsArrays[0] = coloredPointsArrays[0] || [];
+        coloredPointsArrays[0].push(coloredPointsNormalIteration0);
     }
 
-    const coloredPointsNormal = createColoredPoints(normalGeometry, color0, new THREE.Vector3(-0.7, 0, 0));
-    const coloredPointsSmooth = createColoredPoints(smoothGeometry, color0, new THREE.Vector3(0.7, 0, 0));
-
-    // Check if coloredPoints are defined before adding them to the scene
-    if (coloredPointsNormal) {
-        scene.add(coloredPointsNormal);
+    if (coloredPointsSmoothIteration0) {
+        scene.add(coloredPointsSmoothIteration0);
+        coloredPointsArrays[0] = coloredPointsArrays[0] || [];
+        coloredPointsArrays[0].push(coloredPointsSmoothIteration0);
     }
 
-    if (coloredPointsSmooth) {
-        scene.add(coloredPointsSmooth);
+    // Create wireframe geometries for normal and smooth geometries
+    wireNormal.geometry = new THREE.WireframeGeometry(normalGeometry);
+    wireSmooth.geometry = new THREE.WireframeGeometry(meshSmooth.geometry);
+
+    // Ensure the wireframe material is applied
+    wireNormal.material.dispose();
+    wireSmooth.material.dispose();
+    wireNormal.material = wireMaterial.clone();
+    wireSmooth.material = wireMaterial.clone();
+
+    // Set the wireframe visibility
+    wireNormal.visible = params.wireframe;
+    wireSmooth.visible = params.wireframe;
+
+    // Iterate through each iteration and create colored points for smoothGeometry only
+    for (let i = 1; i <= params.iterations; i++) {
+        const smoothGeometry = LoopSubdivision.modify(baseSmoothGeometry.clone(), i, params);
+
+        // Create colored points for smoothGeometry only
+        const color = new THREE.Color().fromArray(colors[i % colors.length]);
+        const coloredPointsSmooth = createColoredPoints(smoothGeometry, color, new THREE.Vector3(0.7, 0, 0), i);
+
+        // Add the colored points to the scene
+        if (coloredPointsSmooth) {
+            scene.add(coloredPointsSmooth);
+            coloredPointsArrays[i] = coloredPointsArrays[i] || [];
+            coloredPointsArrays[i].push(coloredPointsSmooth);
+        }
     }
-
-    // Ensure wireframe visibility is updated
-    updateWireframe();
-
-    // Update the material if needed
-    updateMaterial();
 
     // Render the scene
     render();
 }
+
+
+
+
 
 
 
