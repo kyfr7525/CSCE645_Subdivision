@@ -111,11 +111,24 @@ function init() {
     const gui = new GUI();
 
     const folder1 = gui.addFolder('Subdivide Params');
+    // const geomController = folder1.add(params, 'geometry', geomTypes).onFinishChange(() => {
+    //     const geom = params.geometry.toLowerCase();
+    //     params.split = geom === 'box' || geom === 'ring' || geom === 'plane';
+    //     refreshDisplay();
+    // });
     const geomController = folder1.add(params, 'geometry', geomTypes).onFinishChange(() => {
         const geom = params.geometry.toLowerCase();
         params.split = geom === 'box' || geom === 'ring' || geom === 'plane';
+    
+        // Clear uploaded geometry if the selected geometry is not "Upload"
+        if (geom !== 'upload' && uploadedGeometry) {
+            scene.remove(uploadedGeometry);
+            uploadedGeometry = null;
+        }
+    
         refreshDisplay();
     });
+    
 
     folder1.add(params, 'iterations').min(0).max(5).step(1).onFinishChange(updateMeshes);
     const splitController = folder1.add(params, 'split').onFinishChange(updateMeshes);
@@ -150,8 +163,13 @@ function init() {
 
             // Update the GUI label
             updateUploadLabel();
+        } else {
+            // Clear uploaded geometry if a different geometry is selected
+            scene.remove(uploadedGeometry);
+            uploadedGeometry = null;
         }
     }
+
 
 
 
@@ -332,7 +350,7 @@ function createColoredPoints(geometry, color, offset, iteration) {
     return points;
 }
 
-
+// CHECKPOINT !!!!!
 function updateMeshes() {
     // Clear the scene if "upload" is selected and no OBJ file has been uploaded
     const selectedGeometry = params.geometry.toLowerCase();
