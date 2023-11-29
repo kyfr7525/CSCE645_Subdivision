@@ -11,6 +11,9 @@ let wireNormal, wireSmooth;
 let wireMaterial;
 let coloredPoints;
 let coloredPointsArrays = []; // Array to store colored points for each iteration
+let uploadedGeometry = null;
+let isUploadedVisible = false; // Flag to control the visibility of the uploaded object
+
 
 // Create a gray color
 var grayColor = new THREE.Color(0.5, 0.5, 0.5); // base color
@@ -31,21 +34,13 @@ var colors = [
     color5.toArray()
 ];
 
-// Define colors for each iteration
-var colorsByIteration = [
-    [color0.toArray()],
-    [color0.toArray(), color1.toArray()],
-    [color0.toArray(), color1.toArray(), color2.toArray()],
-    [color0.toArray(), color1.toArray(), color2.toArray(), color3.toArray()],
-    [color0.toArray(), color1.toArray(), color2.toArray(), color3.toArray(), color4.toArray()],
-    [color0.toArray(), color1.toArray(), color2.toArray(), color3.toArray(), color4.toArray(), color5.toArray()]
-];
 
 const params = {
     geometry: 'Box',
     iterations: 3,
     split: true,
-    wireframe: true
+    wireframe: true,
+    showColoredPoints: true, // Added control for colored points visibility
 };
 
 init();
@@ -70,6 +65,19 @@ function init() {
     controls.minZoom = 1;
     controls.target.set(0, 0, 0);
     controls.update();
+
+
+    // Create file input element
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.id = 'input';
+    fileInput.style.display = 'none';
+
+    // Add an event listener to the file input
+    fileInput.addEventListener('change', uploadObj);
+
+    // Append file input to the body
+    document.body.appendChild(fileInput);
 
     const light = new THREE.PointLight(0xff0000, 1, 100);
     light.position.set(2.5, 7.5, 15);
@@ -98,7 +106,7 @@ function init() {
 
     window.addEventListener('resize', onWindowResize);
 
-    const geomTypes = ['Box', 'Capsule', 'Circle', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Octahedron', 'Plane', 'Ring', 'Sphere', 'Tetrahedron', 'Torus'];//, 'Upload'];
+    const geomTypes = ['Box', 'Capsule', 'Circle', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Octahedron', 'Plane', 'Ring', 'Sphere', 'Tetrahedron', 'Torus', 'Upload'];
 
     const gui = new GUI();
 
@@ -112,8 +120,41 @@ function init() {
     folder1.add(params, 'iterations').min(0).max(5).step(1).onFinishChange(updateMeshes);
     const splitController = folder1.add(params, 'split').onFinishChange(updateMeshes);
 
+
+
+
+    // const folder2 = gui.addFolder('Material');
+    // folder2.add(params, 'wireframe').onFinishChange(updateWireframe);
     const folder2 = gui.addFolder('Material');
     folder2.add(params, 'wireframe').onFinishChange(updateWireframe);
+    folder2.add(params, 'showColoredPoints').onFinishChange(updateColoredPointsVisibility); // Added control for colored points visibility
+
+
+    // Add an indicator for uploaded OBJ file
+    const uploadIndicator = { 'Toggle Upload': toggleUpload };
+    folder2.add(uploadIndicator, 'Toggle Upload').name('Toggle Upload');
+
+
+    // Function to toggle the visibility of the uploaded object
+    function toggleUpload() {
+        isUploadedVisible = !isUploadedVisible;
+
+        // Set the visibility of the uploaded object only if "Upload" is selected in the GUI
+        const selectedGeometry = params.geometry.toLowerCase();
+        if (selectedGeometry === 'upload' && uploadedGeometry) {
+            uploadedGeometry.visible = isUploadedVisible;
+
+            // Manually update the renderer's state
+            renderer.state.reset();
+            renderer.render(scene, camera);
+
+            // Update the GUI label
+            updateUploadLabel();
+        }
+    }
+
+
+
 
     function refreshDisplay() {
         geomController.updateDisplay();
@@ -121,6 +162,27 @@ function init() {
         updateMeshes();
     }
 }
+
+
+// function updateColoredPointsVisibility() {
+//     const visibility = params.showColoredPoints;
+
+//     // Set visibility for colored points in each iteration
+//     coloredPointsArrays.flat().forEach(points => (points.visible = visibility));
+
+//     render();
+// }
+function updateColoredPointsVisibility() {
+    const visibility = params.showColoredPoints;
+
+    // Set visibility for colored points in each iteration
+    coloredPointsArrays.flat().forEach(points => (points.visible = visibility));
+
+    // Manually update the renderer's state
+    renderer.state.reset();
+    renderer.render(scene, camera);
+}
+
 
 
 function getGeometry() {
@@ -163,10 +225,81 @@ function getGeometry() {
         case 'torus':
             return new THREE.TorusGeometry( 0.48, 0.24, 4, 6 );
 
-        // case 'Upload':
-        //     // when user wants to upload their own obj file
+        case 'Upload':
+            // when user wants to upload their own obj file
+            return uploadedGeometry;
     }
 
+}
+
+
+
+// Add an event listener to the file input
+const fileInput = document.getElementById('input');
+fileInput.addEventListener('change', uploadObj);
+
+// Add a variable to track the uploaded file name
+let uploadedFileName = '';
+
+// Add a div to display the uploaded file name
+const uploadLabel = document.getElementById('uploadLabel');
+
+function uploadObj() {
+    const fileURL = URL.createObjectURL(this.files[0]);
+    console.log(fileURL);
+
+    const loader = new OBJLoader();
+    loader.load(
+        fileURL,
+        function (object) {
+            handleUploadedObject(object);
+
+            // Update the uploaded file name
+            uploadedFileName = this.files[0].name;
+
+            // Update the upload label
+            updateUploadLabel();
+
+            // Manually update the renderer's state
+            renderer.state.reset();
+            renderer.render(scene, camera);
+        },
+        function (xhr) {
+            console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+        },
+        function (error) {
+            console.log('An error happened');
+        }
+    );
+}
+
+
+// Function to update the upload label
+function updateUploadLabel() {
+    uploadLabel.innerText = uploadedFileName ? `Uploaded: ${uploadedFileName}` : '';
+}
+
+
+
+function handleUploadedObject(object) {
+    object.traverse(function (node) {
+        if (node.isMesh) {
+            // Set the geometry for the uploaded object
+            meshNormal.geometry = meshSmooth.geometry = node.geometry;
+
+            // Store the uploaded geometry
+            uploadedGeometry = node;
+
+            // Apply standard material to the uploaded geometry
+            node.material = standardMat;
+
+            // Set the initial visibility
+            uploadedGeometry.visible = isUploadedVisible;
+        }
+    });
+    object.position.set(0, 0, 0);
+    scene.add(object);
+    updateMeshes(); // Update other meshes as needed
 }
 
 
@@ -199,23 +332,58 @@ function createColoredPoints(geometry, color, offset, iteration) {
     return points;
 }
 
-function updateMeshes() {
-    const normalGeometry = getGeometry();
-    const smoothGeometry = LoopSubdivision.modify(normalGeometry, params.iterations, params);
 
-    // Dispose existing geometries
+function updateMeshes() {
+    // Clear the scene if "upload" is selected and no OBJ file has been uploaded
+    const selectedGeometry = params.geometry.toLowerCase();
+    if (selectedGeometry === 'upload' && !uploadedGeometry) {
+        // Hide other geometries
+        meshNormal.visible = false;
+        meshSmooth.visible = false;
+        wireNormal.visible = false;
+        wireSmooth.visible = false;
+
+        // Remove existing colored points from the scene
+        coloredPointsArrays.flat().forEach(points => scene.remove(points));
+
+        // Clear the colored points array
+        coloredPointsArrays = [];
+
+        // Render the empty scene
+        render();
+        return;
+    }
+
+    // Show other geometries
+    meshNormal.visible = true;
+    meshSmooth.visible = true;
+    wireNormal.visible = true;
+    wireSmooth.visible = true;
+
+    // Dispose existing geometries and materials
     meshNormal.geometry.dispose();
     meshSmooth.geometry.dispose();
     wireNormal.geometry.dispose();
     wireSmooth.geometry.dispose();
 
+    disposeMaterial(meshNormal.material);
+    disposeMaterial(meshSmooth.material);
+
     // Create new geometries
+    const normalGeometry = getGeometry();
+    const baseSmoothGeometry = getGeometry(); // Create a base smooth geometry for iteration 0
     meshNormal.geometry = normalGeometry;
-    meshSmooth.geometry = smoothGeometry;
+    meshSmooth.geometry = LoopSubdivision.modify(baseSmoothGeometry.clone(), params.iterations, params);
+
+    // Create materials for normal and smooth geometries
+    const normalMaterial = new THREE.MeshBasicMaterial({ color: grayColor });
+    const smoothMaterial = standardMat.clone(); // Use the same material for smooth geometry
+    meshNormal.material = normalMaterial;
+    meshSmooth.material = smoothMaterial;
 
     // Create wireframe geometries
     wireNormal.geometry = new THREE.WireframeGeometry(normalGeometry);
-    wireSmooth.geometry = new THREE.WireframeGeometry(smoothGeometry);
+    wireSmooth.geometry = new THREE.WireframeGeometry(meshSmooth.geometry);
 
     // Ensure the wireframe material is applied
     wireNormal.material.dispose();
@@ -224,7 +392,8 @@ function updateMeshes() {
     wireSmooth.material = wireMaterial.clone();
 
     // Set the wireframe visibility
-    wireNormal.visible = wireSmooth.visible = params.wireframe;
+    wireNormal.visible = params.wireframe;
+    wireSmooth.visible = params.wireframe;
 
     // Remove existing colored points from the scene
     coloredPointsArrays.flat().forEach(points => scene.remove(points));
@@ -232,28 +401,39 @@ function updateMeshes() {
     // Clear the colored points array
     coloredPointsArrays = [];
 
-    // Iterate through each iteration and create colored points
-    for (let i = 0; i <= params.iterations; i++) {
-        const color = new THREE.Color().fromArray(colors[i % colors.length]);
-        const coloredPointsNormal = createColoredPoints(normalGeometry, color, new THREE.Vector3(-0.7, 0, 0), i);
-        const coloredPointsSmooth = createColoredPoints(smoothGeometry, color, new THREE.Vector3(0.7, 0, 0), i);
+    // Create colored points for iteration 0 of both normalGeometry and smoothGeometry
+    const coloredPointsNormalIteration0 = createColoredPoints(normalGeometry, color0, new THREE.Vector3(-0.7, 0, 0), 0);
+    const coloredPointsSmoothIteration0 = createColoredPoints(baseSmoothGeometry.clone(), color0, new THREE.Vector3(0.7, 0, 0), 0);
 
-        // Add the colored points to the scene
-        if (coloredPointsNormal) {
-            scene.add(coloredPointsNormal);
-            coloredPointsArrays[i] = coloredPointsArrays[i] || [];
-            coloredPointsArrays[i].push(coloredPointsNormal);
-        }
-
-        if (coloredPointsSmooth) {
-            scene.add(coloredPointsSmooth);
-            coloredPointsArrays[i] = coloredPointsArrays[i] || [];
-            coloredPointsArrays[i].push(coloredPointsSmooth);
-        }
+    if (coloredPointsNormalIteration0 && params.showColoredPoints) {
+        scene.add(coloredPointsNormalIteration0);
+        coloredPointsArrays[0] = coloredPointsArrays[0] || [];
+        coloredPointsArrays[0].push(coloredPointsNormalIteration0);
     }
 
-    // Update the material if needed
-    updateMaterial();
+    if (coloredPointsSmoothIteration0 && params.showColoredPoints) {
+        scene.add(coloredPointsSmoothIteration0);
+        coloredPointsArrays[0] = coloredPointsArrays[0] || [];
+        coloredPointsArrays[0].push(coloredPointsSmoothIteration0);
+    }
+
+    // Iterate through each iteration and create colored points for smoothGeometry only
+    for (let i = 1; i <= params.iterations; i++) {
+        const smoothGeometry = LoopSubdivision.modify(baseSmoothGeometry.clone(), i, params);
+
+        // Create colored points for smoothGeometry only if visibility is on
+        if (params.showColoredPoints) {
+            const color = new THREE.Color().fromArray(colors[i % colors.length]);
+            const coloredPointsSmooth = createColoredPoints(smoothGeometry, color, new THREE.Vector3(0.7, 0, 0), i);
+
+            // Add the colored points to the scene
+            if (coloredPointsSmooth) {
+                scene.add(coloredPointsSmooth);
+                coloredPointsArrays[i] = coloredPointsArrays[i] || [];
+                coloredPointsArrays[i].push(coloredPointsSmooth);
+            }
+        }
+    }
 
     // Render the scene
     render();
