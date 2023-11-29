@@ -15,117 +15,220 @@ let isUploadedVisible = false; // Flag to control the visibility of the uploaded
 let subdivisionController;
 
 // Create a gray color
-const grayColor = new THREE.Color(0.5, 0.5, 0.5); // base color
+const grayColor = new THREE.Color(0.6, 0.6, 0.6); // base color
 
 const colors = [
-    new THREE.Color(1, 0, 0), // Red
-    new THREE.Color(0, 1, 0), // Green
-    new THREE.Color(0, 0, 1), // Blue
-    new THREE.Color(1, 1, 0), // Yellow
-    new THREE.Color(1, 0, 1), // Pink
-    new THREE.Color(0, 1, 1), // Cyan
-    new THREE.Color(1, 0.5, 0) // Orange
+  new THREE.Color(1, 0, 0), // Red
+  new THREE.Color(0, 1, 0), // Green
+  new THREE.Color(0, 0, 1), // Blue
+  new THREE.Color(1, 1, 0), // Yellow
+  new THREE.Color(1, 0, 1), // Pink
+  new THREE.Color(0, 1, 1), // Cyan
+  new THREE.Color(1, 0.5, 0), // Orange
 ];
 
 const params = {
-    geometry: 'Box',
-    iterations: 3,
-    split: true,
-    wireframe: true,
-    showColoredPoints: true, // Added control for colored points visibility
+  geometry: 'Box',
+  iterations: 0,
+  split: true,
+  wireframe: true,
+  showColoredPoints: true, // Added control for colored points visibility
 };
 
 init();
 
 function init() {
-    const version = parseInt(THREE.REVISION.replace(/\D/g, ''));
+  const version = parseInt(THREE.REVISION.replace(/\D/g, ''));
 
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    if (version && version > 151) renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-    document.body.appendChild(renderer.domElement);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  if (version && version > 151) renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+  document.body.appendChild(renderer.domElement);
 
-    scene = new THREE.Scene();
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0.2, 0.2, 0.2); // Set the background color
 
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight);
-    camera.position.set(0, 0.7, 2.1);
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight);
+  camera.position.set(0, 0.7, 2.1);
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.addEventListener('change', render);
-    controls.rotateSpeed = 0.5;
-    controls.minZoom = 1;
-    controls.target.set(0, 0, 0);
-    controls.update();
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.addEventListener('change', render);
+  controls.rotateSpeed = 0.5;
+  controls.minZoom = 1;
+  controls.target.set(0, 0, 0);
+  controls.update();
 
-    const light = new THREE.PointLight(0xff0000, 1, 100);
-    light.position.set(2.5, 7.5, 15);
-    scene.add(light);
+  const light = new THREE.PointLight(0xff0000, 1, 100);
+  light.position.set(2.5, 7.5, 15);
+  scene.add(light);
 
-    standardMat = new THREE.MeshBasicMaterial({ color: grayColor });
+  standardMat = new THREE.MeshNormalMaterial();
 
-    meshNormal = new THREE.Mesh(new THREE.BufferGeometry(), standardMat);
-    meshSmooth = new THREE.Mesh(new THREE.BufferGeometry(), standardMat);
-    meshNormal.position.set(-0.7, 0, 0);
-    meshSmooth.position.set(0.7, 0, 0);
-    scene.add(meshNormal, meshSmooth);
+  meshNormal = new THREE.Mesh(new THREE.BufferGeometry(), standardMat);
+  meshSmooth = new THREE.Mesh(new THREE.BufferGeometry(), standardMat);
+  meshNormal.position.set(-0.7, 0, 0);
+  meshSmooth.position.set(0.7, 0, 0);
+  scene.add(meshNormal, meshSmooth);
 
-    wireMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: true, wireframe: true });
-    wireNormal = new THREE.Mesh(new THREE.BufferGeometry(), wireMaterial);
-    wireSmooth = new THREE.Mesh(new THREE.BufferGeometry(), wireMaterial);
-    wireNormal.visible = true;
-    wireSmooth.visible = true;
-    wireNormal.position.copy(meshNormal.position);
-    wireSmooth.position.copy(meshSmooth.position);
-    scene.add(wireNormal, wireSmooth);
+  wireMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: true, wireframe: true });
+  wireNormal = new THREE.Mesh(new THREE.BufferGeometry(), wireMaterial);
+  wireSmooth = new THREE.Mesh(new THREE.BufferGeometry(), wireMaterial);
+  wireNormal.visible = true;
+  wireSmooth.visible = true;
+  wireNormal.position.copy(meshNormal.position);
+  wireSmooth.position.copy(meshSmooth.position);
+  scene.add(wireNormal, wireSmooth);
 
-    updateMeshes();
+  updateMeshes();
 
-    window.addEventListener('resize', onWindowResize);
+  window.addEventListener('resize', onWindowResize);
 
-    const geomTypes = ['Box', 'Capsule', 'Circle', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Octahedron', 'Plane', 'Ring', 'Sphere', 'Tetrahedron', 'Torus', 'Upload'];
+  const geomTypes = ['Box', 'Capsule', 'Circle', 'Cylinder', 'Dodecahedron', 'Icosahedron', 'Octahedron', 'Plane', 'Ring', 'Sphere', 'Tetrahedron', 'Torus', 'Upload'];
 
-    const gui = new GUI();
+  const gui = new GUI();
 
-    // Create GUI controllers
-    const folder1 = gui.addFolder('Subdivide Params');
-    const geomController = folder1.add(params, 'geometry', geomTypes).name('Geometry').onFinishChange(() => {
-        const geom = params.geometry.toLowerCase();
-        params.split = geom === 'box' || geom === 'ring' || geom === 'plane';
+  // Create GUI controllers
+  const folder1 = gui.addFolder('Subdivide Params');
+  const geomController = folder1.add(params, 'geometry', geomTypes).name('Geometry').onFinishChange(() => {
+    const geom = params.geometry.toLowerCase();
+    params.split = geom === 'box' || geom === 'ring' || geom === 'plane';
 
-        // Disable subdivision slider for uploaded geometry
-        subdivisionController.domElement.style.pointerEvents = geom === 'upload' ? 'none' : 'auto';
+    ///////////////////////////////////////////////
+    // Disable subdivision slider for uploaded geometry
+    // subdivisionController.domElement.style.pointerEvents = geom === 'upload' ? 'none' : 'auto';
 
-        // Clear uploaded geometry if the selected geometry is not "Upload"
-        if (geom !== 'upload' && uploadedGeometry) {
-            scene.remove(uploadedGeometry);
-            uploadedGeometry = null;
-            updateMeshes(); // Update other geometries
-        } else if (geom === 'upload') {
-            // Load and render the uploaded geometry
-            uploadObj();
-        }
 
-        refreshDisplay();
-    });
 
-    subdivisionController = folder1.add(params, 'iterations').min(0).max(5).step(1).onFinishChange(updateMeshes);
-    subdivisionController.domElement.style.pointerEvents = 'auto'; // Set pointer events to 'auto'
-
-    const splitController = folder1.add(params, 'split').onFinishChange(updateMeshes);
-
-    const folder2 = gui.addFolder('Material');
-    folder2.add(params, 'wireframe').onFinishChange(updateWireframe);
-    folder2.add(params, 'showColoredPoints').onFinishChange(updateColoredPointsVisibility);
-
-    function refreshDisplay() {
-        geomController.updateDisplay();
-        splitController.updateDisplay();
-        updateMeshes();
+    if (geom !== 'upload' && uploadedGeometry) {
+        scene.remove(uploadedGeometry);
+        uploadedGeometry = null;
+        updateMeshes(); // Update other geometries
     }
+    else if (geom === 'upload') {
+      // Load and render the uploaded geometry
+      uploadObj();
+    }
+    
+    refreshDisplay();
+    
+  });
+
+//   subdivisionController = folder1.add(params, 'iterations').min(0).max(5).step(1).onFinishChange(updateMeshes);
+  subdivisionController = folder1.add(params, 'iterations').min(0).max(5).step(1).onChange(updateMeshes);
+  subdivisionController.domElement.style.pointerEvents = 'auto'; // Set pointer events to 'auto'
+  
+
+  const splitController = folder1.add(params, 'split').onFinishChange(updateMeshes);
+
+  const folder2 = gui.addFolder('Material');
+  folder2.add(params, 'wireframe').onFinishChange(updateWireframe);
+  folder2.add(params, 'showColoredPoints').onFinishChange(updateColoredPointsVisibility);
+
+  function refreshDisplay() {
+    geomController.updateDisplay();
+    splitController.updateDisplay();
+    updateMeshes();
+  }
 }
 
 
+
+// Add an event listener to the file input
+const fileInput = document.getElementById('input');
+fileInput.addEventListener('change', () => {
+  const fileURL = URL.createObjectURL(fileInput.files[0]);
+  const fileName = fileInput.files[0].name;
+
+  // Display the uploaded file name
+  document.getElementById('uploadLabel').innerText = `Uploaded file: ${fileName}`;
+
+  const loader = new OBJLoader();
+  loader.load(
+    fileURL,
+    function (object) {
+      handleUploadedObject(object);
+    },
+    function (xhr) {
+      console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+    },
+    function (error) {
+      console.error('An error happened:', error);
+    }
+  );
+  
+});
+
+
+function uploadObj() {
+    // Trigger click event on the file input to open the file dialog
+    fileInput.click();
+  }
+
+  // meshNormal and meshSmooth of uploaded OBJ
+function handleUploadedObject(object) {
+    // Clear existing geometry and materials
+    clearExistingGeometry();
+    
+  
+    // Assuming the OBJ file contains a single mesh, extract its geometry
+    const geometry = object.children[0].geometry;
+  
+    // Set the geometry for the uploaded object
+    uploadedGeometry = new THREE.Mesh(geometry, standardMat);
+  
+    // Set the initial visibility
+    uploadedGeometry.visible = false;
+  
+    // Dispose existing geometries and materials
+    meshNormal.geometry.dispose();
+    meshSmooth.geometry.dispose();
+  
+    disposeMaterial(meshNormal.material);
+    disposeMaterial(meshSmooth.material);
+  
+    // Create new geometries
+    meshNormal.geometry = geometry.clone();
+    meshSmooth.geometry = LoopSubdivision.modify(geometry.clone(), params.iterations, params);
+  
+    meshNormal.visible = true;
+    meshSmooth.visible = true;
+
+    // Set the materials
+    meshNormal.material = standardMat.clone();
+    meshSmooth.material = standardMat.clone();
+  
+    // Update positions
+    meshNormal.position.set(-0.7, 0, 0); // Adjust the position as needed
+    meshSmooth.position.set(0.7, 0, 0); // Adjust the position as needed
+  
+    // Add the updated geometries to the scene
+    scene.add(meshNormal, meshSmooth, wireNormal, wireSmooth, uploadedGeometry);
+  
+    // Create wireframe geometries
+    wireNormal.geometry = new THREE.WireframeGeometry(meshNormal.geometry);
+    wireSmooth.geometry = new THREE.WireframeGeometry(meshSmooth.geometry);
+  
+    // Ensure the wireframe material is applied
+    wireNormal.material.dispose();
+    wireSmooth.material.dispose();
+    wireNormal.material = wireMaterial.clone();
+    wireSmooth.material = wireMaterial.clone();
+  
+    // Set the wireframe visibility
+    wireNormal.visible = params.wireframe;
+    wireSmooth.visible = params.wireframe;
+  
+    // Update wireframe positions to match the corresponding geometries
+    wireNormal.position.copy(meshNormal.position);
+    wireSmooth.position.copy(meshSmooth.position);
+  
+
+    // Render the scene
+    render();
+  }
+  
+  
 
 function getGeometry() {
     switch (params.geometry.toLowerCase()) {
@@ -172,79 +275,6 @@ function getGeometry() {
 }
 
 
-
-// Add an event listener to the file input
-const fileInput = document.getElementById('input');
-fileInput.addEventListener('change', () => {
-    const fileURL = URL.createObjectURL(fileInput.files[0]);
-    const fileName = fileInput.files[0].name;
-
-    // Display the uploaded file name
-    document.getElementById('uploadLabel').innerText = `Uploaded file: ${fileName}`;
-
-    const loader = new OBJLoader();
-    loader.load(
-        fileURL,
-        function (object) {
-            handleUploadedObject(object);
-        },
-        function (xhr) {
-            console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
-        },
-        function (error) {
-            console.log('An error happened');
-        }
-    );
-});
-
-
-function uploadObj() {
-    // Trigger click event on the file input to open the file dialog
-    fileInput.click();
-}
-
-// ... (your existing code)
-
-function handleUploadedObject(object) {
-    // Clear existing geometry and materials
-    clearExistingGeometry();
-
-    // Set the geometry for the uploaded object
-    uploadedGeometry = object.clone();
-
-    // Apply a MeshBasicMaterial to the uploaded geometry
-    // const material = new THREE.MeshBasicMaterial({ color: grayColor });
-    const material = new THREE.MeshNormalMaterial();
-    uploadedGeometry.traverse((node) => {
-        if (node.isMesh) {
-            node.material = material;
-        }
-    });
-
-    // Set the initial visibility
-    uploadedGeometry.visible = true;
-
-    // Add the uploaded geometry to the scene
-    scene.add(uploadedGeometry);
-    uploadedGeometry.scale.set(1, 1, 1); // Set the scale factor as needed
-
-    uploadedGeometry.position.set(0, 0, 0); // Set the position as needed
-
-
-    // Disable subdivision slider for uploaded geometry
-    subdivisionController.domElement.style.pointerEvents = 'none';
-
-    // Display the uploaded file name
-    const fileName = document.getElementById('input').files[0].name;
-    document.getElementById('uploadLabel').innerText = `Uploaded file: ${fileName}`;
-
-    // Render the scene
-    render();
-}
-
-// ... (your existing code)
-
-
 function clearExistingGeometry() {
     if (uploadedGeometry) {
         scene.remove(uploadedGeometry);
@@ -287,8 +317,9 @@ function createColoredPoints(geometry, color, offset, iteration) {
 }
 
 function updateMeshes() {
-    // Clear the scene if "upload" is selected and no OBJ file has been uploaded
     const selectedGeometry = params.geometry.toLowerCase();
+
+    // Check if "upload" is selected and no OBJ file has been uploaded
     if (selectedGeometry === 'upload' && !uploadedGeometry) {
         // Hide other geometries
         meshNormal.visible = false;
@@ -324,6 +355,98 @@ function updateMeshes() {
     disposeMaterial(meshNormal.material);
     disposeMaterial(meshSmooth.material);
 
+    // If uploaded geometry exists, update it
+    if (uploadedGeometry) {
+        // Clear existing geometry and materials
+        clearExistingGeometry();
+        
+
+        // Assuming the OBJ file contains a single mesh, extract its geometry
+        const geometry = uploadedGeometry.geometry;
+        
+  
+        // Set the geometry for the uploaded object
+        uploadedGeometry.geometry = geometry; // Use 'uploadedGeometry.geometry' instead of 'uploadedGeometry'
+        
+
+        // Set the geometry for the uploaded object
+        uploadedGeometry = new THREE.Mesh(geometry, standardMat);
+
+        // Set the initial visibility
+        uploadedGeometry.visible = false;
+
+        // Create new geometries and update positions
+        meshNormal.geometry = geometry.clone();
+        meshSmooth.geometry = LoopSubdivision.modify(geometry.clone(), params.iterations, params);
+
+        // Set the materials
+        meshNormal.material = standardMat.clone();
+        meshSmooth.material = standardMat.clone();
+
+        // Update positions
+        meshNormal.position.set(-0.7, 0, 0); // Adjust the position as needed
+        meshSmooth.position.set(0.7, 0, 0); // Adjust the position as needed
+
+        // Add the updated geometries to the scene
+        scene.add(meshNormal, meshSmooth, wireNormal, wireSmooth, uploadedGeometry);
+
+        // Create wireframe geometries
+        wireNormal.geometry = new THREE.WireframeGeometry(meshNormal.geometry);
+        wireSmooth.geometry = new THREE.WireframeGeometry(meshSmooth.geometry);
+
+        // Ensure the wireframe material is applied
+        wireNormal.material.dispose();
+        wireSmooth.material.dispose();
+        wireNormal.material = wireMaterial.clone();
+        wireSmooth.material = wireMaterial.clone();
+
+        // Set the wireframe visibility
+        wireNormal.visible = params.wireframe;
+        wireSmooth.visible = params.wireframe;
+
+        // Update wireframe positions to match the corresponding geometries
+        wireNormal.position.copy(meshNormal.position);
+        wireSmooth.position.copy(meshSmooth.position);
+
+        // Remove existing colored points from the scene
+        coloredPointsArrays.flat().forEach(points => scene.remove(points));
+
+        // Clear the colored points array
+        coloredPointsArrays = [];
+
+        // Iterate through each iteration and create colored points for smoothGeometry only
+        for (let i = 0; i <= params.iterations; i++) {
+            const smoothGeometry = LoopSubdivision.modify(geometry.clone(), i, params);
+
+            // Create colored points for smoothGeometry only if visibility is on
+            if (params.showColoredPoints) {
+                const color = colors[i % colors.length];
+                const coloredPointsSmooth = createColoredPoints(smoothGeometry, color, new THREE.Vector3(0.7, 0, 0), i);
+
+                // Add the colored points to the scene
+                if (coloredPointsSmooth) {
+                    scene.add(coloredPointsSmooth);
+                    coloredPointsArrays[i] = coloredPointsArrays[i] || [];
+                    coloredPointsArrays[i].push(coloredPointsSmooth);
+                }
+            }
+        }
+
+        // Render the scene
+        render();
+        return;
+    }
+
+    // Continue with the rest of the code for other geometries
+    // Dispose existing geometries and materials
+    meshNormal.geometry.dispose();
+    meshSmooth.geometry.dispose();
+    wireNormal.geometry.dispose();
+    wireSmooth.geometry.dispose();
+
+    disposeMaterial(meshNormal.material);
+    disposeMaterial(meshSmooth.material);
+
     // Create new geometries
     const normalGeometry = getGeometry();
     const baseSmoothGeometry = getGeometry(); // Create a base smooth geometry for iteration 0
@@ -331,7 +454,7 @@ function updateMeshes() {
     meshSmooth.geometry = LoopSubdivision.modify(baseSmoothGeometry.clone(), params.iterations, params);
 
     // Create materials for normal and smooth geometries
-    const normalMaterial = new THREE.MeshBasicMaterial({ color: grayColor });
+    const normalMaterial = standardMat;
     const smoothMaterial = standardMat.clone(); // Use the same material for smooth geometry
     meshNormal.material = normalMaterial;
     meshSmooth.material = smoothMaterial;
@@ -393,10 +516,13 @@ function updateMeshes() {
             }
         }
     }
+    
 
     // Render the scene
     render();
 }
+
+
 
 function disposeMaterial(material) {
     if (material) {

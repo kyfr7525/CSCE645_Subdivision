@@ -18,29 +18,11 @@ import * as THREE from 'three';
 //  Info
 //      This modifier uses the Loop (Charles Loop, 1987) subdivision surface algorithm to smooth
 //      modern three.js BufferGeometry.
-//
-//      At one point, three.js included a subdivision surface modifier in the extended examples (see bottom
-//      of file for links), it was removed in r125. The modifier was originally based on the Catmull-Clark
-//      algorithm, which works best for geometry with convex coplanar n-gon faces. In three.js r60 the modifier
-//      was changed to utilize the Loop algorithm. The Loop algorithm was designed to work better with triangle
-//      based meshes.
-//
 //      The Loop algorithm, however, doesn't always provide uniform results as the vertices are
 //      skewed toward the most used vertex positions. A triangle based box (e.g. BoxGeometry for example) will
 //      tend to favor the corners. To alleviate this issue, this implementation includes an initial pass to split
 //      coplanar faces at their shared edges. It starts by splitting along the longest shared edge first, and then
 //      from that midpoint it splits to any remaining coplanar shared edges.
-//
-//      Also by default, this implementation inserts new uv coordinates, but does not average them using the Loop
-//      algorithm. In some cases (often in flat geometries) this will produce undesired results, a
-//      noticeable tearing will occur. In such cases, try passing 'uvSmooth' as true to enable uv averaging.
-//
-//  Note(s)
-//      - This modifier returns a new BufferGeometry instance, it does not dispose() of the old geometry.
-//
-//      - This modifier returns a NonIndexed geometry. An Indexed geometry can be created by using the
-//        BufferGeometryUtils.mergeVertices() function, see:
-//        https://threejs.org/docs/?q=buffer#examples/en/utils/BufferGeometryUtils.mergeVertices
 
 /////////////////////////////////////////////////////////////////////////////////////
 
