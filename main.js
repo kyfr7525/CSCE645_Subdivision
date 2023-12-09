@@ -11,7 +11,6 @@ let wireNormal, wireSmooth;
 let wireMaterial;
 let coloredPointsArrays = []; // Array to store colored points for each iteration
 let uploadedGeometry = null;
-let isUploadedVisible = false; // Flag to control the visibility of the uploaded object
 let subdivisionController;
 
 // Create a gray color
